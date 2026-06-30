@@ -94,7 +94,10 @@ data "aws_ami" "eks_node" {
 
 locals {
   user_data = templatefile("${path.module}/user_data.sh", {
-    cluster_name = var.cluster_name
+    cluster_name     = var.cluster_name
+    cluster_endpoint = var.cluster_endpoint
+    cluster_ca       = var.cluster_ca
+    service_cidr     = var.service_cidr
   })
 }
 

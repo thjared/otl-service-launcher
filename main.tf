@@ -54,6 +54,9 @@ module "eks_outposts_node_group" {
   tags = local.tags
 
   cluster_name       = local.eks_cluster_name
+  cluster_endpoint   = concat(module.eks_cluster[*].cluster_endpoint, [""])[0]
+  cluster_ca         = concat(module.eks_cluster[*].cluster_ca_cert, [""])[0]
+  service_cidr       = "192.168.0.0/16"
   kubernetes_version = "1.33"
   outpost_subnet_id  = aws_subnet.outpost_private.id
   instance_type      = coalesce(local.allowed_outpost_instance_types...)
@@ -70,6 +73,9 @@ module "eks_local_outposts_node_group" {
   tags = local.tags
 
   cluster_name       = local.eks_local_cluster_name
+  cluster_endpoint   = concat(module.eks_on_outposts[*].cluster_endpoint, [""])[0]
+  cluster_ca         = concat(module.eks_on_outposts[*].cluster_ca_cert, [""])[0]
+  service_cidr       = "192.168.0.0/16"
   kubernetes_version = "1.32"
   outpost_subnet_id  = aws_subnet.outpost_private.id
   instance_type      = coalesce(local.allowed_outpost_instance_types...)

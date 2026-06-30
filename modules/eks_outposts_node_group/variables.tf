@@ -83,3 +83,18 @@ variable "volume_size" {
   type    = number
   default = 20
 }
+
+variable "cluster_endpoint" {
+  type    = string
+  default = ""
+}
+
+variable "cluster_ca" {
+  type    = string
+  default = ""
+}
+
+variable "service_cidr" {
+  type    = string
+  default = "172.20.0.0/16"
+}
