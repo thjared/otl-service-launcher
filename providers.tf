@@ -48,13 +48,14 @@ provider "kubernetes" {
 }
 
 # Provider for EKS Local Cluster (requires --cluster-id with UUID)
+# Note: Only active when eks_cluster_on_outposts is enabled in tfvars
 provider "kubernetes" {
   alias                  = "local_cluster"
   host                   = concat(module.eks_on_outposts[*].cluster_endpoint, [""])[0]
-  cluster_ca_certificate = base64decode(concat(module.eks_on_outposts[*].cluster_ca_cert, [""])[0])
+  cluster_ca_certificate = base64decode(coalesce(concat(module.eks_on_outposts[*].cluster_ca_cert, [""])[0], "dW51c2Vk"))
   exec {
     api_version = "client.authentication.k8s.io/v1beta1"
-    args        = ["eks", "get-token", "--cluster-id", concat(module.eks_on_outposts[*].cluster_id, [""])[0]]
+    args        = ["eks", "get-token", "--cluster-id", coalesce(concat(module.eks_on_outposts[*].cluster_id, [""])[0], "placeholder")]
     command     = "aws"
   }
 }
