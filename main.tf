@@ -49,15 +49,31 @@ module "eks_on_outposts" {
 
 module "eks_outposts_node_group" {
   source = "./modules/eks_outposts_node_group"
-  count  = (var.eks && var.eks_outpost_node_group || var.eks_cluster_on_outposts && var.eks_outpost_node_group) ? 1 : 0
+  count  = (var.eks && var.eks_outpost_node_group) ? 1 : 0
 
   tags = local.tags
 
-  cluster_name       = var.eks_cluster_on_outposts ? local.eks_local_cluster_name : local.eks_cluster_name
-  kubernetes_version = var.eks_cluster_on_outposts ? "1.32" : "1.33"
+  cluster_name       = local.eks_cluster_name
+  kubernetes_version = "1.33"
   outpost_subnet_id  = aws_subnet.outpost_private.id
   instance_type      = coalesce(local.allowed_outpost_instance_types...)
-  security_group     = var.eks_cluster_on_outposts ? concat(module.eks_on_outposts[*].cluster_security_group_id, [""])[0] : concat(module.eks_cluster[*].cluster_security_group_id, [""])[0]
+  security_group     = concat(module.eks_cluster[*].cluster_security_group_id, [""])[0]
+
+  # Ensure the local gateway attachment succeeds before deploying instances
+  depends_on = [aws_ec2_local_gateway_route_table_vpc_association.lgw_association]
+}
+
+module "eks_local_outposts_node_group" {
+  source = "./modules/eks_outposts_node_group"
+  count  = (var.eks_cluster_on_outposts && var.eks_outpost_node_group) ? 1 : 0
+
+  tags = local.tags
+
+  cluster_name       = local.eks_local_cluster_name
+  kubernetes_version = "1.32"
+  outpost_subnet_id  = aws_subnet.outpost_private.id
+  instance_type      = coalesce(local.allowed_outpost_instance_types...)
+  security_group     = concat(module.eks_on_outposts[*].cluster_security_group_id, [""])[0]
 
   # Ensure the local gateway attachment succeeds before deploying instances
   depends_on = [aws_ec2_local_gateway_route_table_vpc_association.lgw_association]
