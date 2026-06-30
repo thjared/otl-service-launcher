@@ -176,10 +176,9 @@ resource "aws_iam_role" "iam_emr_service_role" {
   tags = var.tags
 }
 
-resource "aws_iam_role_policy" "iam_emr_service_role_policy" {
-  name   = "iam_emr_service_policy"
-  role   = aws_iam_role.iam_emr_service_role.id
-  policy = file("${path.module}/iam_emr_service_role_policy.json")
+resource "aws_iam_role_policy_attachment" "iam_emr_service_role_policy" {
+  role       = aws_iam_role.iam_emr_service_role.id
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonEMRServicePolicy_v2"
 }
 
 
