@@ -98,3 +98,9 @@ variable "service_cidr" {
   type    = string
   default = "172.20.0.0/16"
 }
+
+variable "cluster_id" {
+  description = "The EKS cluster UUID (required for local clusters, use cluster ID not name)"
+  type    = string
+  default = ""
+}

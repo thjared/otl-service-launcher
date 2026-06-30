@@ -79,7 +79,7 @@ data "aws_ami" "eks_node" {
 
   filter {
     name   = "name"
-    values = ["amazon-eks-node-${var.kubernetes_version}*"]
+    values = [local.use_al2023 ? "amazon-eks-node-al2023-x86_64-standard-${var.kubernetes_version}*" : "amazon-eks-node-${var.kubernetes_version}*"]
   }
 
   filter {
@@ -99,7 +99,13 @@ data "aws_ami" "eks_node" {
 }
 
 locals {
-  user_data = templatefile("${path.module}/user_data.sh", {
+  use_al2023 = var.cluster_id != ""
+  user_data = local.use_al2023 ? templatefile("${path.module}/user_data_al2023.sh", {
+    cluster_id       = var.cluster_id
+    cluster_endpoint = var.cluster_endpoint
+    cluster_ca       = var.cluster_ca
+    service_cidr     = var.service_cidr
+  }) : templatefile("${path.module}/user_data.sh", {
     cluster_name = var.cluster_name
   })
 }

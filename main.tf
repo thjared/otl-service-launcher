@@ -73,6 +73,7 @@ module "eks_local_outposts_node_group" {
   tags = local.tags
 
   cluster_name       = local.eks_local_cluster_name
+  cluster_id         = concat(module.eks_on_outposts[*].cluster_id, [""])[0]
   cluster_endpoint   = concat(module.eks_on_outposts[*].cluster_endpoint, [""])[0]
   cluster_ca         = concat(module.eks_on_outposts[*].cluster_ca_cert, [""])[0]
   service_cidr       = "192.168.0.0/16"
