@@ -110,6 +110,17 @@ resource "aws_security_group_rule" "emr_core_self" {
   self        = true
 }
 
+resource "aws_security_group_rule" "emr_core_egress" {
+  security_group_id = aws_security_group.emr_core.id
+  type              = "egress"
+
+  description = "Allow all outbound traffic"
+  protocol    = "-1"
+  from_port   = 0
+  to_port     = 0
+  cidr_blocks = ["0.0.0.0/0"]
+}
+
 ###############
 ###############
 ###############
