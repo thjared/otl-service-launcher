@@ -104,3 +104,9 @@ variable "cluster_id" {
   type    = string
   default = ""
 }
+
+variable "admin_role_arn" {
+  description = "IAM role ARN to grant system:masters access in aws-auth (e.g., bastion role)"
+  type    = string
+  default = ""
+}

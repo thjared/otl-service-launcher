@@ -164,6 +164,7 @@ resource "kubernetes_config_map_v1_data" "aws_auth" {
       "${path.module}/aws-auth-config-map-data-map-roles.yaml",
       {
         eks_outposts_node_group_iam_role = aws_iam_role.eks_outposts_node_group.arn
+        admin_role_arn                   = var.admin_role_arn
       }
     )
   }
