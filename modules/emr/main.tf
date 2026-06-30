@@ -3,6 +3,9 @@ resource "aws_emr_cluster" "outpost_cluster" {
   release_label = var.release_label
   applications  = ["Spark"]
 
+  # Force gp2 root volume on Outposts (7.x AMIs default to gp3 which isn't available)
+  ebs_root_volume_size = 15
+
   ec2_attributes {
     subnet_id                         = var.subnet_id
     emr_managed_master_security_group = aws_security_group.emr_master.id
