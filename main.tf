@@ -119,7 +119,9 @@ module "emr_cluster" {
 
   subnet_id = aws_subnet.outpost_private.id
 
-  release_label = "emr-6.15.0"
+  # NOTE: EMR on Outposts may not work on RAM-shared outposts (only owner accounts).
+  # If you get "internal error", try deploying from the outpost owner account instead.
+  release_label = "emr-7.13.0"
 
   # these will be cross-checked against supported EMR instances
   # an arbitrary instance type supported by the 
