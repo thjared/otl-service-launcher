@@ -151,21 +151,6 @@ resource "aws_iam_role_policy_attachment" "amazon_ssm_managed_instance_core" {
 # Apply the AWS IAM Authenticator configuration map to enable nodes to join the 
 # cluster from within the private VPC.
 # https://docs.aws.amazon.com/eks/latest/userguide/launch-workers.html
-resource "kubernetes_config_map_v1_data" "aws_auth" {
-  metadata {
-    name      = "aws-auth"
-    namespace = "kube-system"
-  }
-
-  force = true
-
-  data = {
-    mapRoles = templatefile(
-      "${path.module}/aws-auth-config-map-data-map-roles.yaml",
-      {
-        eks_outposts_node_group_iam_role = aws_iam_role.eks_outposts_node_group.arn
-        admin_role_arn                   = var.admin_role_arn
-      }
-    )
-  }
-}
+# aws-auth ConfigMap is patched via the node's userdata script.
+# The node applies the configmap on first boot since it has network access
+# to the local cluster API server (Terraform/laptop cannot reach it).

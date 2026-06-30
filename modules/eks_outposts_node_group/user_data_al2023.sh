@@ -18,13 +18,9 @@ spec:
 Content-Type: text/x-shellscript; charset="us-ascii"
 
 #!/bin/bash
-# Fix for EKS Local Clusters: nodeadm generates --cluster-name but
-# the IAM authenticator on local clusters requires --cluster-id (UUID).
-# This script patches the kubeconfig after nodeadm generates it.
-
+# EKS Local Cluster fix: nodeadm writes --cluster-name but local clusters need --cluster-id
 if [[ "${cluster_id}" =~ ^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$ ]]; then
-  # Wait for nodeadm to generate the kubeconfig
-  for i in $(seq 1 30); do
+  for i in $(seq 1 60); do
     [ -f /var/lib/kubelet/kubeconfig ] && break
     sleep 2
   done

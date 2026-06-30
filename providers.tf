@@ -14,6 +14,11 @@ terraform {
       source  = "hashicorp/kubernetes"
       version = "~> 2.25"
     }
+
+    null = {
+      source  = "hashicorp/null"
+      version = "~> 3.0"
+    }
   }
 }
 
@@ -47,15 +52,7 @@ provider "kubernetes" {
   }
 }
 
-# Provider for EKS Local Cluster (requires --cluster-id with UUID)
-# Note: Only active when eks_cluster_on_outposts is enabled in tfvars
-provider "kubernetes" {
-  alias                  = "local_cluster"
-  host                   = concat(module.eks_on_outposts[*].cluster_endpoint, [""])[0]
-  cluster_ca_certificate = base64decode(coalesce(concat(module.eks_on_outposts[*].cluster_ca_cert, [""])[0], "dW51c2Vk"))
-  exec {
-    api_version = "client.authentication.k8s.io/v1beta1"
-    args        = ["eks", "get-token", "--cluster-id", coalesce(concat(module.eks_on_outposts[*].cluster_id, [""])[0], "placeholder")]
-    command     = "aws"
-  }
-}
+# Note: EKS Local Cluster aws-auth is managed via null_resource with kubectl
+# in the node group module. A kubernetes provider cannot be used because providers
+# are evaluated at plan time — if eks_cluster_on_outposts=false, the endpoint
+# resolves to empty and Terraform connects to localhost:80.

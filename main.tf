@@ -70,10 +70,6 @@ module "eks_local_outposts_node_group" {
   source = "./modules/eks_outposts_node_group"
   count  = (var.eks_cluster_on_outposts && var.eks_outpost_node_group) ? 1 : 0
 
-  providers = {
-    kubernetes = kubernetes.local_cluster
-  }
-
   tags = local.tags
 
   cluster_name       = local.eks_local_cluster_name
@@ -188,6 +184,41 @@ resource "aws_iam_instance_profile" "bastion" {
   count = var.eks_cluster_on_outposts ? 1 : 0
   name  = "${var.username}-eks-bastion-profile"
   role  = aws_iam_role.bastion[0].name
+}
+
+# Patch aws-auth ConfigMap via SSM on the bastion (only machine with network
+# access to the local cluster API). Terraform cannot reach the private endpoint.
+resource "null_resource" "patch_aws_auth" {
+  count = var.eks_cluster_on_outposts ? 1 : 0
+
+  triggers = {
+    cluster_id     = module.eks_on_outposts[0].cluster_id
+    node_role_arn  = module.eks_local_outposts_node_group[0].node_role_arn
+    bastion_role   = aws_iam_role.bastion[0].arn
+  }
+
+  provisioner "local-exec" {
+    command = <<-EOT
+      # Wait for bastion SSM agent to register
+      for i in $(seq 1 30); do
+        aws ssm describe-instance-information --filters Key=InstanceIds,Values=${aws_instance.bastion[0].id} --region ${var.region} --query 'InstanceInformationList[0].PingStatus' --output text 2>/dev/null | grep -q Online && break
+        sleep 10
+      done
+      # Send the kubectl patch command
+      aws ssm send-command \
+        --instance-ids ${aws_instance.bastion[0].id} \
+        --document-name AWS-RunShellScript \
+        --parameters 'commands=["aws eks update-kubeconfig --name ${local.eks_local_cluster_name} --region ${var.region} && sed -i \"s/--cluster-name/--cluster-id/\" ~/.kube/config && sed -i \"s/${local.eks_local_cluster_name}/${module.eks_on_outposts[0].cluster_id}/\" ~/.kube/config && kubectl apply -f - <<EOF\napiVersion: v1\nkind: ConfigMap\nmetadata:\n  name: aws-auth\n  namespace: kube-system\ndata:\n  mapRoles: |\n    - rolearn: ${module.eks_local_outposts_node_group[0].node_role_arn}\n      username: system:node:{{EC2PrivateDNSName}}\n      groups:\n        - system:bootstrappers\n        - system:nodes\n    - rolearn: ${aws_iam_role.bastion[0].arn}\n      username: admin\n      groups:\n        - system:masters\nEOF"]' \
+        --region ${var.region} \
+        --output text
+    EOT
+  }
+
+  depends_on = [
+    module.eks_on_outposts,
+    module.eks_local_outposts_node_group,
+    aws_instance.bastion,
+  ]
 }
 
 # -----------------------------------------------------------------------------
