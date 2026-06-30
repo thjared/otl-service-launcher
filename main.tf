@@ -140,11 +140,19 @@ resource "aws_iam_role" "bastion" {
       Action    = "sts:AssumeRole"
     }]
   })
-  managed_policy_arns = [
-    "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore",
-    "arn:aws:iam::aws:policy/AmazonEKSClusterPolicy",
-  ]
   tags = local.tags
+}
+
+resource "aws_iam_role_policy_attachment" "bastion_ssm" {
+  count      = var.eks_cluster_on_outposts ? 1 : 0
+  role       = aws_iam_role.bastion[0].name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
+}
+
+resource "aws_iam_role_policy_attachment" "bastion_eks" {
+  count      = var.eks_cluster_on_outposts ? 1 : 0
+  role       = aws_iam_role.bastion[0].name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEKSClusterPolicy"
 }
 
 resource "aws_iam_instance_profile" "bastion" {
