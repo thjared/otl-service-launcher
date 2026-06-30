@@ -119,9 +119,10 @@ module "emr_cluster" {
 
   subnet_id = aws_subnet.outpost_private.id
 
-  # NOTE: EMR on Outposts may not work on RAM-shared outposts (only owner accounts).
-  # If you get "internal error", try deploying from the outpost owner account instead.
-  release_label = "emr-7.13.0"
+  # NOTE: EMR 7.x AMIs use gp3 root volumes which are not available on Outposts.
+  # Until EMR fixes this, use 6.x releases on Outposts (they default to gp2 root volumes).
+  # See: VolumeTypeNotAvailableInZone error in CloudTrail.
+  release_label = "emr-6.15.0"
 
   # these will be cross-checked against supported EMR instances
   # an arbitrary instance type supported by the 
