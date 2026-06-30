@@ -64,6 +64,80 @@ module "eks_outposts_node_group" {
 }
 
 # -----------------------------------------------------------------------------
+# Bastion instance (for EKS Local Cluster management)
+# Deployed in-region in the same VPC so it can reach the local cluster API
+# -----------------------------------------------------------------------------
+resource "aws_instance" "bastion" {
+  count         = var.eks_cluster_on_outposts ? 1 : 0
+  ami           = data.aws_ami.bastion_ami[0].id
+  instance_type = "t3.micro"
+  subnet_id     = aws_subnet.region_az_1_public.id
+
+  iam_instance_profile = aws_iam_instance_profile.bastion[0].name
+  vpc_security_group_ids = [aws_security_group.alpha.id]
+
+  metadata_options {
+    http_tokens   = "required"
+    http_endpoint = "enabled"
+  }
+
+  user_data = base64encode(<<-EOF
+    #!/bin/bash
+    dnf install -y jq git
+    curl -LO "https://dl.k8s.io/release/$(curl -sL https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+    chmod +x kubectl && mv kubectl /usr/local/bin/
+    curl -sL "https://github.com/eksctl-io/eksctl/releases/latest/download/eksctl_Linux_amd64.tar.gz" | tar xz -C /usr/local/bin/
+    curl -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+  EOF
+  )
+
+  tags = merge(local.tags, {
+    Name = "${var.username}-eks-bastion"
+  })
+
+  depends_on = [aws_ec2_local_gateway_route_table_vpc_association.lgw_association]
+}
+
+data "aws_ami" "bastion_ami" {
+  count       = var.eks_cluster_on_outposts ? 1 : 0
+  owners      = ["amazon"]
+  most_recent = true
+
+  filter {
+    name   = "name"
+    values = ["al2023-ami-2023.*-x86_64"]
+  }
+  filter {
+    name   = "state"
+    values = ["available"]
+  }
+}
+
+resource "aws_iam_role" "bastion" {
+  count              = var.eks_cluster_on_outposts ? 1 : 0
+  name               = "${var.username}-eks-bastion-role"
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect    = "Allow"
+      Principal = { Service = "ec2.amazonaws.com" }
+      Action    = "sts:AssumeRole"
+    }]
+  })
+  managed_policy_arns = [
+    "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore",
+    "arn:aws:iam::aws:policy/AmazonEKSClusterPolicy",
+  ]
+  tags = local.tags
+}
+
+resource "aws_iam_instance_profile" "bastion" {
+  count = var.eks_cluster_on_outposts ? 1 : 0
+  name  = "${var.username}-eks-bastion-profile"
+  role  = aws_iam_role.bastion[0].name
+}
+
+# -----------------------------------------------------------------------------
 # ElastiCache clusters
 # -----------------------------------------------------------------------------
 module "elasticache_memcached_instance" {
