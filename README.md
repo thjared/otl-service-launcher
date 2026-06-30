@@ -6,13 +6,13 @@ AWS customers, partners, and Solutions Architects using the Outposts Test Labs (
 
 Deployable Services:
 
-* AWS Cloud9 *[bastion instances]*
-* Amazon EMR
-* Amazon ElastiCache Memcached
-* Amazon ElastiCache Redis
-* Amazon Elastic Kubernetes Service (EKS)
-* Amazon Relational Database Service (RDS) MySQL
-* Amazon Relational Database Service (RDS) PostgreSQL
+* Amazon EMR (v7.5.0)
+* Amazon ElastiCache Memcached (v1.6.22)
+* Amazon ElastiCache Redis (v7.1)
+* Amazon EKS Extended Cluster *[control plane in Region, worker nodes on Outpost]* (v1.33)
+* Amazon EKS Local Cluster *[control plane and data plane on Outpost]* (v1.32)
+* Amazon Relational Database Service (RDS) MySQL (v8.0.39)
+* Amazon Relational Database Service (RDS) PostgreSQL (v16.4)
 * Simulated on-premises VPC *[routed through the AWS Outpost's Local Gateway (LGW)]*
 * AWS Storage Gateway File Gateway
 * AWS Storage Gateway Volume Gateway
@@ -38,8 +38,6 @@ There are three ways to use this module:
     profile  = "<<your-aws-cli-profile>>"
     region = "us-west-2"
 
-    region_cloud9           = false
-    outpost_cloud9          = false
     emr                     = false 
     memcached               = false
     redis                   = false
@@ -67,8 +65,6 @@ There are three ways to use this module:
       profile  = "<<your-aws-cli-profile>>"
       region = "us-west-2"
 
-      region_cloud9           = false
-      outpost_cloud9          = false
       emr                     = false
       memcached               = false
       redis                   = false
@@ -110,14 +106,12 @@ Set these flags to true to deploy the desired services.
 
 | Name | Default | Description |
 | ---- | ------- | ----------- |
-| region_cloud9 | `false` | Deploy a Cloud9 bastion in the main VPC in the Region. |
-| outpost_cloud9 | `false` | Deploy a Cloud9 bastion on the Outpost. |
 | emr | `false` | Deploy an EMR cluster on the Outpost. |
 | memcached | `false` | Deploy an ElastiCache Memcached instance on the Outpost. |
 | redis | `false` | Deploy an ElastiCache Redis instance on the Outpost. |
-| eks | `false` | Deploy an EKS cluster in the main VPC in the Region. |
-| eks_on_outposts | `false` | Deploy an EKS cluster on Outposts in the main VPC in the Region. |
-| eks_outpost_node_group | `false` | Deploy an EKS unmanaged node group on the Outpost and register the nodes with the EKS cluster deployed by the "eks" flag. |
+| eks | `false` | **EKS Extended Cluster:** Deploy an EKS cluster with the control plane in the Region and self-managed worker nodes on the Outpost. The cluster API endpoint is in the Region (v1.33). |
+| eks_cluster_on_outposts | `false` | **EKS Local Cluster:** Deploy an EKS cluster where both control plane AND data plane run on the Outpost. Operates independently during network disconnects from the Region (v1.32). |
+| eks_outpost_node_group | `false` | Deploy a self-managed EKS node group on the Outpost. Attaches to the Extended or Local cluster depending on which is enabled. |
 | mysql | `false` | Deploy an RDS MySQL instance on the Outpost. |
 | postgres | `false` | Deploy an RDS PostgreSQL instance on the Outpost. |
 | on_prem_vpc | `false` | Deploy a VPC to simulate an on-premises network in the region and to enable connectivity to on-premises networks. |
@@ -146,8 +140,6 @@ username = "<<your-username>>"
 profile  = "<<your-aws-cli-profile>>"
 region = "us-west-2"
 
-region_cloud9           = false
-outpost_cloud9          = false
 emr                     = false 
 memcached               = false
 redis                   = false

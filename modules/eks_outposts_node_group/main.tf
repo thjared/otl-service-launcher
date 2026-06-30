@@ -13,25 +13,17 @@ resource "aws_autoscaling_group" "eks_outposts_node_group" {
     version = "$Latest"
   }
 
-  tags = concat(
-    [for tag, value in var.tags : {
-      key                 = tag
-      value               = value
+  dynamic "tag" {
+    for_each = merge(var.tags, {
+      "Name"                                      = "${var.cluster_name}-${var.node_group_name}-node"
+      "kubernetes.io/cluster/${var.cluster_name}" = "owned"
+    })
+    content {
+      key                 = tag.key
+      value               = tag.value
       propagate_at_launch = true
-    }],
-    [
-      {
-        key                 = "Name"
-        value               = "${var.cluster_name}-${var.node_group_name}-node"
-        propagate_at_launch = true
-      },
-      {
-        key                 = "kubernetes.io/cluster/${var.cluster_name}"
-        value               = "owned"
-        propagate_at_launch = true
-      },
-    ]
-  )
+    }
+  }
 
   depends_on = [
     aws_iam_role_policy_attachment.amazon_eks_worker_node_policy,
@@ -46,7 +38,7 @@ resource "aws_launch_template" "eks_nodes" {
 
   image_id      = data.aws_ami.eks_node.id
   instance_type = var.instance_type
-  user_data     = base64encode(data.template_file.user_data.rendered)
+  user_data     = base64encode(local.user_data)
 
   iam_instance_profile {
     arn = aws_iam_instance_profile.eks_outposts_node_group.arn
@@ -81,7 +73,7 @@ data "aws_ami" "eks_node" {
 
   filter {
     name   = "name"
-    values = ["amazon-eks-node-${var.kubernetes_version}*"]
+    values = ["amazon-eks-node-al2023-x86_64-standard-${var.kubernetes_version}*"]
   }
 
   filter {
@@ -100,11 +92,10 @@ data "aws_ami" "eks_node" {
   }
 }
 
-data "template_file" "user_data" {
-  template = file("${path.module}/user_data.sh")
-  vars = {
+locals {
+  user_data = templatefile("${path.module}/user_data.sh", {
     cluster_name = var.cluster_name
-  }
+  })
 }
 
 

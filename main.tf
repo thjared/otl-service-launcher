@@ -1,40 +1,4 @@
 # -----------------------------------------------------------------------------
-# Cloud9 bastions
-# -----------------------------------------------------------------------------
-module "region_cloud9_bastion" {
-  source = "./modules/cloud9"
-  count  = var.region_cloud9 ? 1 : 0
-
-  username = var.username
-  tags     = local.tags
-
-  location      = "region"
-  subnet_id     = aws_subnet.region_az_1_public.id
-  instance_type = "m5.2xlarge"
-
-  automatic_stop_time_minutes = 240
-  # Ensure the local gateway attachment succeeds before deploying instances
-  depends_on = [aws_ec2_local_gateway_route_table_vpc_association.lgw_association]
-}
-
-module "outpost_cloud9_bastion" {
-  source = "./modules/cloud9"
-  count  = var.outpost_cloud9 ? 1 : 0
-
-  username = var.username
-  tags     = local.tags
-
-  location      = "outpost"
-  subnet_id     = aws_subnet.outpost_public.id
-  instance_type = coalesce(local.allowed_outpost_instance_types...)
-
-  automatic_stop_time_minutes = 240
-  # Ensure the local gateway attachment succeeds before deploying instances
-  depends_on = [aws_ec2_local_gateway_route_table_vpc_association.lgw_association]
-}
-
-
-# -----------------------------------------------------------------------------
 # EKS cluster
 # -----------------------------------------------------------------------------
 module "eks_cluster" {
@@ -45,7 +9,7 @@ module "eks_cluster" {
 
   cluster_name = local.eks_cluster_name
 
-  kubernetes_version = "1.23"
+  kubernetes_version = "1.33"
   service_ipv4_cidr  = "192.168.0.0/16"
 
   cluster_subnet_ids = [
@@ -66,12 +30,12 @@ module "eks_on_outposts" {
 
   tags = local.tags
 
-  cluster_name = local.eks_cluster_name
+  cluster_name = local.eks_local_cluster_name
 
-  kubernetes_version = "1.21"
+  kubernetes_version = "1.32"
   service_ipv4_cidr  = "192.168.0.0/16"
 
-  outpost_arn   =  data.aws_outposts_outposts.all.arns
+  outpost_arn   = data.aws_outposts_outposts.all.arns
   instance_type = coalesce(local.allowed_outpost_instance_types...)
 
   cluster_subnet_ids = [
@@ -90,7 +54,7 @@ module "eks_outposts_node_group" {
   tags = local.tags
 
   cluster_name       = local.eks_cluster_name
-  kubernetes_version = "1.23"
+  kubernetes_version = "1.33"
   outpost_subnet_id  = aws_subnet.outpost_private.id
   instance_type      = coalesce(local.allowed_outpost_instance_types...)
   security_group     = concat(module.eks_cluster[*].cluster_security_group_id, [""])[0]
@@ -112,7 +76,7 @@ module "elasticache_memcached_instance" {
   subnet_ids = [aws_subnet.outpost_private.id]
 
   engine               = "memcached"
-  engine_version       = "1.6.6"
+  engine_version       = "1.6.22"
   parameter_group_name = "default.memcached1.6"
   node_type            = "cache.${coalesce(local.allowed_outpost_instance_types...)}"
   num_cache_nodes      = 1
@@ -131,8 +95,8 @@ module "elasticache_redis_instance" {
   subnet_ids = [aws_subnet.outpost_private.id]
 
   engine               = "redis"
-  engine_version       = "5.0.6"
-  parameter_group_name = "default.redis5.0"
+  engine_version       = "7.1"
+  parameter_group_name = "default.redis7"
   node_type            = "cache.${coalesce(local.allowed_outpost_instance_types...)}"
   num_cache_nodes      = 1
 
@@ -155,7 +119,7 @@ module "emr_cluster" {
 
   subnet_id = aws_subnet.outpost_private.id
 
-  release_label = "emr-5.32.0"
+  release_label = "emr-7.5.0"
 
   # these will be cross-checked against supported EMR instances
   # an arbitrary instance type supported by the 
@@ -181,7 +145,7 @@ module "rds_mysql_instance" {
   subnet_ids = [aws_subnet.outpost_private.id]
 
   engine               = "mysql"
-  engine_version       = "8.0.17"
+  engine_version       = "8.0.39"
   parameter_group_name = "default.mysql8.0"
   instance_class       = "db.${coalesce(local.allowed_outpost_instance_types...)}"
   allocated_storage    = 20
@@ -200,8 +164,8 @@ module "rds_postgres_instance" {
   subnet_ids = [aws_subnet.outpost_private.id]
 
   engine               = "postgres"
-  engine_version       = "12.2"
-  parameter_group_name = "default.postgres12"
+  engine_version       = "16.4"
+  parameter_group_name = "default.postgres16"
   instance_class       = "db.${coalesce(local.allowed_outpost_instance_types...)}"
   allocated_storage    = 20
 
@@ -220,7 +184,7 @@ module "on_prem_vpc" {
   tags     = local.tags
 
   on_prem_vpc_cidr        = var.on_prem_vpc_cidr
-  outpost_coip_pool_cidrs = data.aws_ec2_coip_pool.outpost_coip_pool.pool_cidrs
+  outpost_coip_pool_cidrs = local.coip_pool_cidrs
 
   # Ensure the local gateway attachment succeeds before configuring the on-premises VPC
   depends_on = [aws_ec2_local_gateway_route_table_vpc_association.lgw_association]
