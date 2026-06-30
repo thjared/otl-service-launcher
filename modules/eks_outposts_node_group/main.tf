@@ -60,6 +60,12 @@ resource "aws_launch_template" "eks_nodes" {
     security_groups       = [var.security_group]
   }
 
+  metadata_options {
+    http_endpoint               = "enabled"
+    http_tokens                 = "required"
+    http_put_response_hop_limit = 2
+  }
+
   tags = var.tags
 }
 
