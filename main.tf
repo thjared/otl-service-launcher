@@ -78,7 +78,7 @@ module "elasticache_memcached_instance" {
   engine               = "memcached"
   engine_version       = "1.6.22"
   parameter_group_name = "default.memcached1.6"
-  node_type            = "cache.m5.large"
+  node_type            = "cache.m5.xlarge"
   num_cache_nodes      = 1
 
   # Ensure the local gateway attachment succeeds before deploying instances
@@ -97,7 +97,7 @@ module "elasticache_redis_instance" {
   engine               = "redis"
   engine_version       = "7.1"
   parameter_group_name = "default.redis7"
-  node_type            = "cache.m5.large"
+  node_type            = "cache.m5.xlarge"
   num_cache_nodes      = 1
 
   # Ensure the local gateway attachment succeeds before deploying instances
@@ -119,7 +119,7 @@ module "emr_cluster" {
 
   subnet_id = aws_subnet.outpost_private.id
 
-  release_label = "emr-7.13.0"
+  release_label = "emr-6.15.0"
 
   # these will be cross-checked against supported EMR instances
   # an arbitrary instance type supported by the 
