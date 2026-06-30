@@ -132,6 +132,10 @@ resource "aws_iam_role_policy_attachment" "amazon_ec2_container_registry_read_on
   role       = aws_iam_role.eks_outposts_node_group.name
 }
 
+resource "aws_iam_role_policy_attachment" "amazon_ssm_managed_instance_core" {
+  policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
+  role       = aws_iam_role.eks_outposts_node_group.name
+}
 
 # -----------------------------------------------------------------------------
 # Kubernetes cluster configuration
