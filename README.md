@@ -6,7 +6,7 @@ AWS customers, partners, and Solutions Architects using the Outposts Test Labs (
 
 Deployable Services:
 
-* Amazon EMR (v7.5.0)
+* Amazon EMR (v7.13.0)
 * Amazon ElastiCache Memcached (v1.6.22)
 * Amazon ElastiCache Redis (v7.1)
 * Amazon EKS Extended Cluster *[control plane in Region, worker nodes on Outpost]* (v1.33)
@@ -115,6 +115,35 @@ Set these flags to true to deploy the desired services.
 | mysql | `false` | Deploy an RDS MySQL instance on the Outpost. |
 | postgres | `false` | Deploy an RDS PostgreSQL instance on the Outpost. |
 | on_prem_vpc | `false` | Deploy a VPC to simulate an on-premises network in the region and to enable connectivity to on-premises networks. |
+
+## EKS Local Cluster on Outposts
+
+When `eks_cluster_on_outposts = true`, the module deploys:
+- EKS Local Cluster (control plane + data plane on Outpost, v1.32)
+- Self-managed node group (AL2023 + nodeadm)
+- Bastion instance (t3.micro, in-region, SSM-enabled with kubectl/eksctl/helm)
+
+**Post-deploy setup (2 commands from the bastion):**
+
+```bash
+# SSM into the bastion
+aws ssm start-session --target <bastion-instance-id> --region <region>
+
+# Run the pre-generated setup script
+./setup-kubeconfig.sh
+
+# Apply the pre-generated aws-auth ConfigMap
+kubectl apply -f ~/aws-auth.yaml
+```
+
+The node joins automatically within seconds. The bastion has `system:masters` access.
+
+**Key design decisions:**
+- **AL2023 + nodeadm** — AL2 is deprecated, no EKS 1.33 AMI available
+- **Cluster ID (UUID)** — Local cluster IAM authenticator requires `--cluster-id` not `--cluster-name`
+- **Hop limit 2** — Required for containerized kubelet to reach IMDS
+- **Bastion-based aws-auth** — Terraform cannot reach the private API endpoint; bastion is pre-configured with the correct YAML
+- **VPC endpoint cleanup** — GuardDuty creates endpoints that block subnet deletion on destroy
 
 ## Deployed services
 
