@@ -60,6 +60,44 @@ resource "aws_vpc" "main_vpc" {
   })
 }
 
+# Clean up VPC endpoints (created by GuardDuty, SSM, etc.) before destroying
+# subnets. These are not Terraform-managed and block subnet deletion.
+# This resource depends on subnets so it's destroyed BEFORE them (reverse order).
+resource "null_resource" "cleanup_vpc_endpoints" {
+  triggers = {
+    vpc_id = aws_vpc.main_vpc.id
+    region = var.region
+  }
+
+  provisioner "local-exec" {
+    when    = destroy
+    command = <<-EOT
+      echo "Cleaning up VPC endpoints in ${self.triggers.vpc_id}..."
+      ENDPOINTS=$(aws ec2 describe-vpc-endpoints \
+        --filters "Name=vpc-id,Values=${self.triggers.vpc_id}" \
+        --query 'VpcEndpoints[].VpcEndpointId' --output text \
+        --region ${self.triggers.region} 2>/dev/null)
+      if [ -n "$ENDPOINTS" ]; then
+        for ep in $ENDPOINTS; do
+          echo "Deleting VPC endpoint: $ep"
+          aws ec2 delete-vpc-endpoints --vpc-endpoint-ids "$ep" --region ${self.triggers.region} 2>/dev/null || true
+        done
+        echo "Waiting for ENIs to detach..."
+        sleep 30
+      fi
+    EOT
+  }
+
+  depends_on = [
+    aws_subnet.region_az_1_private,
+    aws_subnet.region_az_2_private,
+    aws_subnet.region_az_1_public,
+    aws_subnet.region_az_2_public,
+    aws_subnet.outpost_private,
+    aws_subnet.outpost_public,
+  ]
+}
+
 
 # Subnets
 resource "aws_subnet" "region_az_1_public" {
