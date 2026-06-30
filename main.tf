@@ -108,52 +108,52 @@ resource "aws_instance" "bastion" {
     http_endpoint = "enabled"
   }
 
-  user_data = base64encode(<<-EOF
-    #!/bin/bash
-    dnf install -y jq git
-    curl -LO "https://dl.k8s.io/release/$(curl -sL https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
-    chmod +x kubectl && mv kubectl /usr/local/bin/
-    curl -sL "https://github.com/eksctl-io/eksctl/releases/latest/download/eksctl_Linux_amd64.tar.gz" | tar xz -C /usr/local/bin/
-    curl -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
-
-    # Pre-generate aws-auth ConfigMap for EKS Local Cluster
-    mkdir -p /home/ec2-user
-    cat > /home/ec2-user/aws-auth.yaml <<'AUTHEOF'
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: aws-auth
-  namespace: kube-system
-data:
-  mapRoles: |
-    - rolearn: ${module.eks_local_outposts_node_group[0].node_role_arn}
-      username: system:node:{{EC2PrivateDNSName}}
-      groups:
-        - system:bootstrappers
-        - system:nodes
-    - rolearn: ${aws_iam_role.bastion[0].arn}
-      username: admin
-      groups:
-        - system:masters
-AUTHEOF
-
-    # Pre-generate kubeconfig setup script
-    cat > /home/ec2-user/setup-kubeconfig.sh <<'SETUPEOF'
-#!/bin/bash
-CLUSTER_NAME="${local.eks_local_cluster_name}"
-CLUSTER_ID=$(aws eks describe-cluster --name $CLUSTER_NAME --query 'cluster.id' --output text --region ${var.region})
-aws eks update-kubeconfig --name $CLUSTER_NAME --region ${var.region}
-sed -i "s/--cluster-name/--cluster-id/" ~/.kube/config
-sed -i "s/$CLUSTER_NAME/$CLUSTER_ID/" ~/.kube/config
-echo "Kubeconfig configured for local cluster (using cluster-id: $CLUSTER_ID)"
-echo ""
-echo "To authorize the node and bastion roles, run:"
-echo "  kubectl apply -f ~/aws-auth.yaml"
-SETUPEOF
-    chmod +x /home/ec2-user/setup-kubeconfig.sh
-    chown -R ec2-user:ec2-user /home/ec2-user/aws-auth.yaml /home/ec2-user/setup-kubeconfig.sh
-  EOF
-  )
+  user_data = base64encode(join("\n", [
+    "#!/bin/bash",
+    "dnf install -y jq git",
+    "curl -LO \"https://dl.k8s.io/release/v1.32.0/bin/linux/amd64/kubectl\"",
+    "chmod +x kubectl && mv kubectl /usr/local/bin/",
+    "curl -sL \"https://github.com/eksctl-io/eksctl/releases/latest/download/eksctl_Linux_amd64.tar.gz\" | tar xz -C /usr/local/bin/",
+    "curl -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash",
+    "",
+    "# Pre-generate aws-auth ConfigMap for EKS Local Cluster",
+    "cat > /home/ec2-user/aws-auth.yaml << 'AUTHEOF'",
+    "apiVersion: v1",
+    "kind: ConfigMap",
+    "metadata:",
+    "  name: aws-auth",
+    "  namespace: kube-system",
+    "data:",
+    "  mapRoles: |",
+    "    - rolearn: ${module.eks_local_outposts_node_group[0].node_role_arn}",
+    "      username: system:node:{{EC2PrivateDNSName}}",
+    "      groups:",
+    "        - system:bootstrappers",
+    "        - system:nodes",
+    "    - rolearn: ${aws_iam_role.bastion[0].arn}",
+    "      username: admin",
+    "      groups:",
+    "        - system:masters",
+    "AUTHEOF",
+    "",
+    "# Pre-generate kubeconfig setup script",
+    "cat > /home/ec2-user/setup-kubeconfig.sh << 'SETUPEOF'",
+    "#!/bin/bash",
+    "CLUSTER_NAME=\"${local.eks_local_cluster_name}\"",
+    "CLUSTER_ID=$(aws eks describe-cluster --name $CLUSTER_NAME --query 'cluster.id' --output text --region ${var.region})",
+    "aws eks update-kubeconfig --name $CLUSTER_NAME --region ${var.region}",
+    "sed -i \"s/--cluster-name/--cluster-id/\" ~/.kube/config",
+    "sed -i \"s/$CLUSTER_NAME/$CLUSTER_ID/\" ~/.kube/config",
+    "echo \"Kubeconfig configured for local cluster (using cluster-id: $CLUSTER_ID)\"",
+    "echo \"\"",
+    "echo \"To authorize the node and bastion roles, run:\"",
+    "echo \"  kubectl apply -f ~/aws-auth.yaml\"",
+    "SETUPEOF",
+    "",
+    "chmod +x /home/ec2-user/setup-kubeconfig.sh",
+    "chown -R ec2-user:ec2-user /home/ec2-user/aws-auth.yaml /home/ec2-user/setup-kubeconfig.sh",
+    "",
+  ]))
 
   tags = merge(local.tags, {
     Name = "${var.username}-eks-bastion"
