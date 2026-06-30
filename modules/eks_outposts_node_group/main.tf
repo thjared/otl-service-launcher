@@ -137,11 +137,13 @@ resource "aws_iam_role_policy_attachment" "amazon_ec2_container_registry_read_on
 # Apply the AWS IAM Authenticator configuration map to enable nodes to join the 
 # cluster from within the private VPC.
 # https://docs.aws.amazon.com/eks/latest/userguide/launch-workers.html
-resource "kubernetes_config_map" "aws_auth" {
+resource "kubernetes_config_map_v1_data" "aws_auth" {
   metadata {
     name      = "aws-auth"
     namespace = "kube-system"
   }
+
+  force = true
 
   data = {
     mapRoles = templatefile(
