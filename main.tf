@@ -155,6 +155,20 @@ resource "aws_iam_role_policy_attachment" "bastion_eks" {
   policy_arn = "arn:aws:iam::aws:policy/AmazonEKSClusterPolicy"
 }
 
+resource "aws_iam_role_policy" "bastion_eks_admin" {
+  count = var.eks_cluster_on_outposts ? 1 : 0
+  name  = "eks-admin"
+  role  = aws_iam_role.bastion[0].id
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect   = "Allow"
+      Action   = ["eks:*", "ec2:Describe*", "iam:GetRole", "iam:ListRoles"]
+      Resource = "*"
+    }]
+  })
+}
+
 resource "aws_iam_instance_profile" "bastion" {
   count = var.eks_cluster_on_outposts ? 1 : 0
   name  = "${var.username}-eks-bastion-profile"
