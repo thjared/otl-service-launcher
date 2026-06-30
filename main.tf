@@ -90,7 +90,10 @@ resource "aws_instance" "bastion" {
   subnet_id     = aws_subnet.region_az_1_public.id
 
   iam_instance_profile = aws_iam_instance_profile.bastion[0].name
-  vpc_security_group_ids = [aws_security_group.alpha.id]
+  vpc_security_group_ids = compact([
+    aws_security_group.alpha.id,
+    try(module.eks_on_outposts[0].cluster_security_group_id, ""),
+  ])
 
   metadata_options {
     http_tokens   = "required"
